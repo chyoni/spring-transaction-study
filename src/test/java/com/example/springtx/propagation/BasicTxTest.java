@@ -8,6 +8,7 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.interceptor.DefaultTransactionAttribute;
 
@@ -66,7 +67,40 @@ public class BasicTxTest {
         TransactionStatus tx2 = transactionManager.getTransaction(new DefaultTransactionAttribute());
         log.info("tx2 commit start");
         transactionManager.commit(tx2);
+    }
 
+    @Test
+    void outer_rollback() {
+        log.info("outer start");
+        TransactionStatus outer = transactionManager.getTransaction(new DefaultTransactionAttribute());
 
+        log.info("inner start");
+        TransactionStatus inner = transactionManager.getTransaction(new DefaultTransactionAttribute());
+
+        log.info("inner commit start");
+        transactionManager.rollback(inner);
+
+        log.info("outer rollback start");
+        transactionManager.commit(outer);
+    }
+
+    @Test
+    void inner_rollback_requires_new() {
+        log.info("outer start");
+        TransactionStatus outer = transactionManager.getTransaction(new DefaultTransactionAttribute());
+        log.info("outer.isNewTransaction()={}", outer.isNewTransaction());
+
+        log.info("inner start");
+        DefaultTransactionAttribute definition = new DefaultTransactionAttribute();
+        definition.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+
+        TransactionStatus inner = transactionManager.getTransaction(definition);
+        log.info("inner.isNewTransaction()={}", inner.isNewTransaction());
+
+        log.info("inner rollback");
+        transactionManager.rollback(inner);
+
+        log.info("outer commit");
+        transactionManager.commit(outer);
     }
 }
